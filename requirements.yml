@@ -1,0 +1,39 @@
+# Ansible Galaxy Requirements for WanderList Infrastructure
+---
+collections:
+  # Kubernetes collection for K8s management
+  - name: kubernetes.core
+    version: ">=2.4.0"
+  
+  # Docker collection for container management
+  - name: community.docker
+    version: ">=3.4.0"
+  
+  # General utilities
+  - name: community.general
+    version: ">=7.0.0"
+  
+  # PostgreSQL management
+  - name: community.postgresql
+    version: ">=2.4.0"
+  
+  # Prometheus monitoring
+  - name: community.grafana
+    version: ">=1.5.0"
+
+roles:
+  # Common system configuration
+  - src: geerlingguy.docker
+    version: "6.1.0"
+  
+  # PostgreSQL setup
+  - src: geerlingguy.postgresql
+    version: "3.4.2"
+  
+  # Monitoring setup
+  - src: cloudalchemy.prometheus
+    version: "2.17.0"
+  
+  # Node exporter for metrics
+  - src: cloudalchemy.node_exporter
+    version: "3.0.0"

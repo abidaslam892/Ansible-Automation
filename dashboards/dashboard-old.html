@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WanderList Ansible Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card h3 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        .status-running { background-color: #48bb78; }
+        .status-stopped { background-color: #f56565; }
+        .status-warning { background-color: #ed8936; }
+        
+        .command-box {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin: 5px 0;
+            color: #2d3748;
+        }
+        
+        .url-link {
+            display: inline-block;
+            background: #4299e1;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 6px;
+            text-decoration: none;
+            margin: 5px 5px 5px 0;
+            transition: background 0.3s ease;
+        }
+        
+        .url-link:hover {
+            background: #3182ce;
+        }
+        
+        .commands-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .command-category {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+        
+        .command-category h4 {
+            color: #553c9a;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+        
+        .command-item {
+            margin-bottom: 8px;
+        }
+        
+        .copy-btn {
+            background: #e2e8f0;
+            border: none;
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-left: 5px;
+        }
+        
+        .copy-btn:hover {
+            background: #cbd5e0;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 WanderList Ansible Dashboard</h1>
+            <p>Container Management & Automation Control Center</p>
+            <p style="opacity: 0.8; font-size: 1rem;">📍 Running on http://localhost:8090</p>
+        </div>
+        
+        <div class="dashboard">
+            <div class="card">
+                <h3>🐳 Container Status</h3>
+                <div class="status">
+                    <div class="status-icon status-running"></div>
+                    <span>Ansible Container: Running</span>
+                </div>
+                <div class="status">
+                    <div class="status-icon status-stopped"></div>
+                    <span>AWX Web Interface: Stopped</span>
+                </div>
+                <div class="command-box">./ansible-monitor status</div>
+            </div>
+            
+            <div class="card">
+                <h3>🌐 Access URLs</h3>
+                <p><strong>Ansible Container Shell:</strong></p>
+                <div class="command-box">./ansible-manager shell</div>
+                
+                <p><strong>Related Services:</strong></p>
+                <a href="http://localhost:9002" class="url-link" target="_blank">WanderList App</a>
+                <a href="http://localhost:9001" class="url-link" target="_blank">Grafana</a>
+                <a href="http://localhost:9090" class="url-link" target="_blank">Prometheus</a>
+            </div>
+            
+            <div class="card">
+                <h3>📊 Quick Stats</h3>
+                <p><strong>Image:</strong> wanderlist-app-ansible-controller</p>
+                <p><strong>Memory Usage:</strong> ~3.4 MiB</p>
+                <p><strong>CPU Usage:</strong> < 0.1%</p>
+                <p><strong>Ansible Version:</strong> 2.19.3</p>
+                <div class="command-box">./ansible-monitor stats</div>
+            </div>
+            
+            <div class="card">
+                <h3>🔧 Quick Actions</h3>
+                <div class="command-box">./ansible-manager restart</div>
+                <div class="command-box">./ansible-manager logs</div>
+                <div class="command-box">./ansible-manager playbook test-ansible.yml</div>
+                <div class="command-box">./ansible-monitor monitor</div>
+            </div>
+        </div>
+        
+        <div class="commands-grid">
+            <div class="command-category">
+                <h4>🚀 Container Management</h4>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager start</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager stop</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager restart</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager status</div>
+                </div>
+            </div>
+            
+            <div class="command-category">
+                <h4>📋 Playbook Execution</h4>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager playbook deploy-wanderlist.yml</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager playbook setup-infrastructure.yml</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager playbook setup-monitoring.yml</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager playbook test-ansible.yml</div>
+                </div>
+            </div>
+            
+            <div class="command-category">
+                <h4>🔍 Monitoring & Debugging</h4>
+                <div class="command-item">
+                    <div class="command-box">./ansible-monitor status</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-monitor monitor</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-monitor health</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-monitor logs</div>
+                </div>
+            </div>
+            
+            <div class="command-category">
+                <h4>🛠️ Ansible Commands</h4>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager ansible --version</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager ansible localhost -m ping</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager install-requirements</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager shell</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>📚 For detailed documentation, see: <code>ansible/README.md</code></p>
+            <p>🔄 Auto-refresh this page or run <code>./ansible-monitor monitor</code> for live updates</p>
+        </div>
+    </div>
+    
+    <script>
+        // Add click-to-copy functionality
+        document.querySelectorAll('.command-box').forEach(box => {
+            box.style.cursor = 'pointer';
+            box.title = 'Click to copy command';
+            box.addEventListener('click', () => {
+                navigator.clipboard.writeText(box.textContent);
+                const original = box.style.background;
+                box.style.background = '#c6f6d5';
+                setTimeout(() => {
+                    box.style.background = original;
+                }, 500);
+            });
+        });
+        
+        // Auto-refresh every 30 seconds
+        setTimeout(() => {
+            location.reload();
+        }, 30000);
+    </script>
+</body>
+</html>

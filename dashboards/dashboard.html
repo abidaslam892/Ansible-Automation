@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WanderList Ansible Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #ff6b6b 100%);
+            color: #333;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated background particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: float 6s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            animation: slideDown 1s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            background: linear-gradient(45deg, #fff, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            font-size: 1.3rem;
+            opacity: 0.95;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .logo-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .ansible-logo {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #ee0000, #ff4444);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: white;
+            box-shadow: 0 20px 40px rgba(238, 0, 0, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 20px 40px rgba(238, 0, 0, 0.3); }
+            50% { transform: scale(1.05); box-shadow: 0 25px 50px rgba(238, 0, 0, 0.4); }
+            100% { transform: scale(1); box-shadow: 0 20px 40px rgba(238, 0, 0, 0.3); }
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            animation: slideUp 0.8s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2, #ff6b6b);
+        }
+        
+        .card:hover {
+            transform: translateY(-10px) rotate(1deg);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+        }
+        
+        .card h3 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+        }
+
+        .icon-container { background: linear-gradient(135deg, #4299e1, #3182ce); }
+        .icon-status { background: linear-gradient(135deg, #48bb78, #38a169); }
+        .icon-stats { background: linear-gradient(135deg, #ed8936, #dd6b20); }
+        .icon-actions { background: linear-gradient(135deg, #9f7aea, #805ad5); }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(0,0,0,0.02);
+        }
+        
+        .status-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 12px;
+            animation: statusBlink 2s infinite;
+        }
+
+        @keyframes statusBlink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.6; }
+        }
+        
+        .status-running { 
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            box-shadow: 0 0 10px rgba(72, 187, 120, 0.5);
+        }
+        .status-stopped { 
+            background: linear-gradient(135deg, #f56565, #e53e3e);
+            box-shadow: 0 0 10px rgba(245, 101, 101, 0.5);
+        }
+        .status-warning { 
+            background: linear-gradient(135deg, #ed8936, #dd6b20);
+            box-shadow: 0 0 10px rgba(237, 137, 54, 0.5);
+        }
+        
+        .command-box {
+            background: linear-gradient(135deg, #1a202c, #2d3748);
+            border: 1px solid #4a5568;
+            border-radius: 12px;
+            padding: 15px;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin: 8px 0;
+            color: #e2e8f0;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .command-box::before {
+            content: '$ ';
+            color: #4ade80;
+            font-weight: bold;
+        }
+
+        .command-box:hover {
+            background: linear-gradient(135deg, #2d3748, #4a5568);
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .url-link {
+            display: inline-block;
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            margin: 8px 8px 8px 0;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            box-shadow: 0 4px 15px rgba(66, 153, 225, 0.3);
+        }
+        
+        .url-link:hover {
+            background: linear-gradient(135deg, #3182ce, #2c5282);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(66, 153, 225, 0.4);
+        }
+
+        .url-link i {
+            margin-right: 8px;
+        }
+        
+        .commands-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .command-category {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .command-category::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .command-category:hover {
+            transform: translateY(-5px);
+        }
+        
+        .command-category h4 {
+            color: #553c9a;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .category-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            color: white;
+            background: linear-gradient(135deg, #553c9a, #7c3aed);
+        }
+        
+        .command-item {
+            margin-bottom: 12px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .stat-item {
+            background: linear-gradient(135deg, #f7fafc, #edf2f7);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-item:hover {
+            background: linear-gradient(135deg, #edf2f7, #e2e8f0);
+            transform: scale(1.05);
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            opacity: 0.9;
+            background: rgba(0,0,0,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .copy-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            transform: translateX(300px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            box-shadow: 0 10px 30px rgba(72, 187, 120, 0.3);
+        }
+
+        .copy-notification.show {
+            transform: translateX(0);
+        }
+
+        .live-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #48bb78;
+            border-radius: 50%;
+            margin-left: 8px;
+            animation: liveBlink 1s infinite;
+        }
+
+        @keyframes liveBlink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 2rem; }
+            .dashboard { grid-template-columns: 1fr; }
+            .commands-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* Dark mode toggle */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated particles background -->
+    <div class="particles" id="particles"></div>
+    
+    <!-- Theme toggle -->
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+        <i class="fas fa-palette"></i>
+    </button>
+
+    <!-- Copy notification -->
+    <div class="copy-notification" id="copyNotification">
+        <i class="fas fa-check"></i> Command copied to clipboard!
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="logo-container">
+                <div class="ansible-logo">
+                    <i class="fab fa-ansible"></i>
+                </div>
+            </div>
+            <h1><i class="fas fa-robot"></i> WanderList Ansible Dashboard</h1>
+            <p>Container Management & Automation Control Center <span class="live-indicator"></span></p>
+        </div>
+        
+        <div class="dashboard">
+            <div class="card">
+                <h3>
+                    <div class="card-icon icon-status">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    Container Status
+                </h3>
+                <div class="status">
+                    <div class="status-icon status-running"></div>
+                    <span><strong>Ansible Container:</strong> Running</span>
+                </div>
+                <div class="status">
+                    <div class="status-icon status-warning"></div>
+                    <span><strong>AWX Web Interface:</strong> Not Active</span>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">~3.4 MB</div>
+                        <div class="stat-label">Memory</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">&lt;0.1%</div>
+                        <div class="stat-label">CPU</div>
+                    </div>
+                </div>
+                <div class="command-box">./ansible-monitor status</div>
+            </div>
+            
+            <div class="card">
+                <h3>
+                    <div class="card-icon icon-container">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    Access URLs
+                </h3>
+                <p><strong><i class="fas fa-terminal"></i> Ansible Container Shell:</strong></p>
+                <div class="command-box">./ansible-manager shell</div>
+                
+                <p><strong><i class="fas fa-link"></i> Related Services:</strong></p>
+                <a href="http://localhost:9002" class="url-link" target="_blank">
+                    <i class="fas fa-map-marked-alt"></i>WanderList App
+                </a>
+                <a href="http://localhost:9001" class="url-link" target="_blank">
+                    <i class="fas fa-chart-line"></i>Grafana
+                </a>
+                <a href="http://localhost:9090" class="url-link" target="_blank">
+                    <i class="fas fa-fire"></i>Prometheus
+                </a>
+            </div>
+            
+            <div class="card">
+                <h3>
+                    <div class="card-icon icon-stats">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    System Statistics
+                </h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">2.19.3</div>
+                        <div class="stat-label">Ansible Version</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">50+</div>
+                        <div class="stat-label">Collections</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">4</div>
+                        <div class="stat-label">Playbooks</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">Active</div>
+                        <div class="stat-label">Status</div>
+                    </div>
+                </div>
+                <div class="command-box">./ansible-monitor stats</div>
+            </div>
+            
+            <div class="card">
+                <h3>
+                    <div class="card-icon icon-actions">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    Quick Actions
+                </h3>
+                <div class="command-box">./ansible-manager restart</div>
+                <div class="command-box">./ansible-manager logs</div>
+                <div class="command-box">./ansible-manager playbook test-ansible.yml</div>
+                <div class="command-box">./ansible-monitor monitor</div>
+            </div>
+        </div>
+        
+        <div class="commands-grid">
+            <div class="command-category">
+                <h4>
+                    <div class="category-icon">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    Container Management
+                </h4>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager start</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager stop</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager restart</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager status</div>
+                </div>
+            </div>
+            
+            <div class="command-category">
+                <h4>
+                    <div class="category-icon">
+                        <i class="fas fa-play"></i>
+                    </div>
+                    Playbook Execution
+                </h4>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager playbook deploy-wanderlist.yml</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager playbook setup-infrastructure.yml</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager playbook setup-monitoring.yml</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager playbook test-ansible.yml</div>
+                </div>
+            </div>
+            
+            <div class="command-category">
+                <h4>
+                    <div class="category-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    Monitoring & Debugging
+                </h4>
+                <div class="command-item">
+                    <div class="command-box">./ansible-monitor status</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-monitor monitor</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-monitor health</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-monitor logs</div>
+                </div>
+            </div>
+            
+            <div class="command-category">
+                <h4>
+                    <div class="category-icon">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                    Ansible Commands
+                </h4>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager ansible --version</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager ansible localhost -m ping</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager install-requirements</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-box">./ansible-manager shell</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><i class="fas fa-book"></i> For detailed documentation, see: <code>ansible/README.md</code></p>
+            <p><i class="fas fa-sync-alt"></i> Auto-refresh: Every 30 seconds | <i class="fas fa-terminal"></i> Run <code>./ansible-monitor monitor</code> for live updates</p>
+        </div>
+    </div>
+    
+    <script>
+        // Create animated particles
+        function createParticles() {
+            const particles = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (Math.random() * 3 + 3) + 's';
+                particles.appendChild(particle);
+            }
+        }
+
+        // Copy to clipboard with notification
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const notification = document.getElementById('copyNotification');
+                notification.classList.add('show');
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 2000);
+            });
+        }
+
+        // Add click-to-copy functionality
+        document.querySelectorAll('.command-box').forEach(box => {
+            box.addEventListener('click', () => {
+                const command = box.textContent.replace('$ ', '');
+                copyToClipboard(command);
+                
+                // Visual feedback
+                box.style.background = 'linear-gradient(135deg, #48bb78, #38a169)';
+                setTimeout(() => {
+                    box.style.background = 'linear-gradient(135deg, #1a202c, #2d3748)';
+                }, 500);
+            });
+        });
+
+        // Theme toggle functionality
+        let isDarkTheme = false;
+        function toggleTheme() {
+            isDarkTheme = !isDarkTheme;
+            if (isDarkTheme) {
+                document.body.style.background = 'linear-gradient(135deg, #1a202c 0%, #2d3748 50%, #4a5568 100%)';
+            } else {
+                document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #ff6b6b 100%)';
+            }
+        }
+
+        // Update status indicators
+        function updateStatus() {
+            // This would typically fetch real data from an API
+            const timestamp = new Date().toLocaleTimeString();
+            console.log(`Status updated at ${timestamp}`);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            updateStatus();
+        });
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            updateStatus();
+        }, 30000);
+
+        // Add hover effects to cards
+        document.querySelectorAll('.card').forEach((card, index) => {
+            card.style.animationDelay = (index * 0.1) + 's';
+        });
+    </script>
+</body>
+</html>

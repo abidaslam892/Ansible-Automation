@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # Ansible Management Container
+  ansible-controller:
+    build:
+      context: ./ansible
+      dockerfile: Dockerfile
+    container_name: wanderlist-ansible
+    hostname: ansible-controller
+    networks:
+      - wanderlist-network
+    volumes:
+      # Mount the entire ansible directory
+      - ./ansible:/ansible:rw
+      # Mount SSH keys for remote access (if needed)
+      - ~/.ssh:/home/ansible/.ssh:ro
+      # Mount Docker socket for Docker management
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount kubectl config for Kubernetes access
+      - ~/.kube:/home/ansible/.kube:ro
+      # Mount the wanderlist app source for deployments
+      - ./:/wanderlist-source:ro
+    ports:
+      - "8090:8090"
+      - "8091:8091"
+    environment:
+      - ANSIBLE_HOST_KEY_CHECKING=False
+      - ANSIBLE_STDOUT_CALLBACK=yaml
+      - PYTHONUNBUFFERED=1
+    working_dir: /ansible
+    tty: true
+    stdin_open: true
+    command: tail -f /dev/null
+    restart: unless-stopped
+    labels:
+      - "com.wanderlist.service=ansible"
+      - "com.wanderlist.description=Ansible automation controller"
+
+networks:
+  wanderlist-network:
+    driver: bridge
+    name: wanderlist-network

@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WanderList Ansible Dashboard - Unified</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #ff6b6b 100%);
+            color: #333;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated background particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: float 6s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            color: white;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 20px;
+        }
+        
+        .mode-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .mode-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .mode-btn.active {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: rgba(76, 175, 80, 0.5);
+            transform: scale(1.05);
+        }
+        
+        .mode-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(76, 175, 80, 0.2);
+            padding: 10px 20px;
+            border-radius: 25px;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+        
+        .content-area {
+            transition: all 0.5s ease;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
+        }
+        
+        .card h3 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .command-section {
+            margin-bottom: 25px;
+        }
+        
+        .command-section h4 {
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .command-box {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #00ff00;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .command-box:hover {
+            background: rgba(0, 0, 0, 0.6);
+            border-color: rgba(76, 175, 80, 0.5);
+            transform: scale(1.02);
+        }
+        
+        .command-box::after {
+            content: "📋 Click to copy";
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            background: rgba(76, 175, 80, 0.8);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .command-box:hover::after {
+            opacity: 1;
+        }
+        
+        .playbook-list {
+            list-style: none;
+        }
+        
+        .playbook-item {
+            background: rgba(255, 255, 255, 0.1);
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        .playbook-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .playbook-name {
+            color: white;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .execute-btn {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .execute-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+        
+        .execute-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .log-container {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 30px;
+            min-height: 400px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: none;
+        }
+        
+        .log-header {
+            color: white;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 10px;
+        }
+        
+        .log-content {
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            max-height: 350px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .log-line {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+        
+        .log-line.error {
+            color: #ff6b6b;
+        }
+        
+        .log-line.warning {
+            color: #ffa726;
+        }
+        
+        .log-line.success {
+            color: #4caf50;
+        }
+        
+        .execution-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-running {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+        
+        .status-completed {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+        
+        .status-failed {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .stop-btn {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+            display: none;
+        }
+        
+        .stop-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .refresh-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading {
+            text-align: center;
+            color: white;
+            font-style: italic;
+            opacity: 0.7;
+        }
+        
+        .error-message {
+            background: rgba(244, 67, 54, 0.1);
+            color: #f44336;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            margin: 10px 0;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Theme toggle */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: white;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+        
+        .success-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(76, 175, 80, 0.9);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            z-index: 1000;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+        
+        @keyframes slideDown {
+            from { transform: translateX(-50%) translateY(-100%); }
+            to { transform: translateX(-50%) translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+    
+    <div class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme">
+        <i class="fas fa-moon"></i>
+    </div>
+    
+    <div class="success-notification" id="notification">
+        <i class="fas fa-check"></i> Command copied to clipboard!
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>
+                <i class="fas fa-robot"></i>
+                WanderList Ansible Dashboard
+                <i class="fas fa-cogs"></i>
+            </h1>
+            <p>Unified Automation Management Platform</p>
+            
+            <div class="mode-toggle">
+                <button class="mode-btn active" id="referenceModeBtn" onclick="switchMode('reference')">
+                    <i class="fas fa-book"></i>
+                    Reference Mode
+                </button>
+                <button class="mode-btn" id="interactiveModeBtn" onclick="switchMode('interactive')">
+                    <i class="fas fa-play-circle"></i>
+                    Interactive Mode
+                </button>
+            </div>
+            
+            <div class="status-indicator" id="apiStatus">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Checking system status...</span>
+            </div>
+        </div>
+        
+        <!-- Reference Mode Content -->
+        <div id="referenceContent" class="content-area">
+            <div class="grid">
+                <div class="card">
+                    <h3><i class="fas fa-rocket"></i> Quick Start Commands</h3>
+                    
+                    <div class="command-section">
+                        <h4><i class="fas fa-play"></i> Container Management</h4>
+                        <div class="command-box" onclick="copyToClipboard('docker exec -it wanderlist-ansible bash')">
+                            docker exec -it wanderlist-ansible bash
+                        </div>
+                        <div class="command-box" onclick="copyToClipboard('docker logs wanderlist-ansible')">
+                            docker logs wanderlist-ansible
+                        </div>
+                    </div>
+                    
+                    <div class="command-section">
+                        <h4><i class="fas fa-list"></i> Ansible Commands</h4>
+                        <div class="command-box" onclick="copyToClipboard('ansible --version')">
+                            ansible --version
+                        </div>
+                        <div class="command-box" onclick="copyToClipboard('ansible-inventory --list')">
+                            ansible-inventory --list
+                        </div>
+                        <div class="command-box" onclick="copyToClipboard('ansible-playbook -i inventory/hosts playbooks/test-ansible.yml')">
+                            ansible-playbook -i inventory/hosts playbooks/test-ansible.yml
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3><i class="fas fa-server"></i> System Information</h3>
+                    
+                    <div class="command-section">
+                        <h4><i class="fas fa-info-circle"></i> Status Checks</h4>
+                        <div class="command-box" onclick="copyToClipboard('./scripts/comprehensive_monitoring.sh status')">
+                            ./scripts/comprehensive_monitoring.sh status
+                        </div>
+                        <div class="command-box" onclick="copyToClipboard('./scripts/comprehensive_monitoring.sh ansible status')">
+                            ./scripts/comprehensive_monitoring.sh ansible status
+                        </div>
+                    </div>
+                    
+                    <div class="command-section">
+                        <h4><i class="fas fa-network-wired"></i> Network & Ports</h4>
+                        <div class="command-box" onclick="copyToClipboard('netstat -tulpn | grep 8090')">
+                            netstat -tulpn | grep 8090
+                        </div>
+                        <div class="command-box" onclick="copyToClipboard('docker port wanderlist-ansible')">
+                            docker port wanderlist-ansible
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3><i class="fas fa-link"></i> Access URLs</h3>
+                    
+                    <div class="command-section">
+                        <h4><i class="fas fa-globe"></i> Service URLs</h4>
+                        <div class="command-box" onclick="copyToClipboard('http://localhost:9002')">
+                            WanderList App: http://localhost:9002
+                        </div>
+                        <div class="command-box" onclick="copyToClipboard('http://localhost:9001')">
+                            Grafana: http://localhost:9001
+                        </div>
+                        <div class="command-box" onclick="copyToClipboard('http://localhost:9090')">
+                            Prometheus: http://localhost:9090
+                        </div>
+                        <div class="command-box" onclick="copyToClipboard('http://localhost:8090')">
+                            Ansible Dashboard: http://localhost:8090
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3><i class="fas fa-tools"></i> Management Scripts</h3>
+                    
+                    <div class="command-section">
+                        <h4><i class="fas fa-cog"></i> Service Control</h4>
+                        <div class="command-box" onclick="copyToClipboard('./scripts/comprehensive_monitoring.sh start')">
+                            ./scripts/comprehensive_monitoring.sh start
+                        </div>
+                        <div class="command-box" onclick="copyToClipboard('./scripts/comprehensive_monitoring.sh stop')">
+                            ./scripts/comprehensive_monitoring.sh stop
+                        </div>
+                        <div class="command-box" onclick="copyToClipboard('./scripts/comprehensive_monitoring.sh restart')">
+                            ./scripts/comprehensive_monitoring.sh restart
+                        </div>
+                    </div>
+                    
+                    <div class="command-section">
+                        <h4><i class="fas fa-robot"></i> Ansible Control</h4>
+                        <div class="command-box" onclick="copyToClipboard('./scripts/comprehensive_monitoring.sh ansible start')">
+                            ./scripts/comprehensive_monitoring.sh ansible start
+                        </div>
+                        <div class="command-box" onclick="copyToClipboard('./scripts/comprehensive_monitoring.sh ansible restart')">
+                            ./scripts/comprehensive_monitoring.sh ansible restart
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Interactive Mode Content -->
+        <div id="interactiveContent" class="content-area hidden">
+            <div class="grid">
+                <div class="card">
+                    <h3><i class="fas fa-play-circle"></i> Available Playbooks</h3>
+                    <div id="playbooksContainer">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i> Loading playbooks...
+                        </div>
+                    </div>
+                    <button class="refresh-btn" onclick="loadPlaybooks()">
+                        <i class="fas fa-sync-alt"></i>
+                        Refresh Playbooks
+                    </button>
+                </div>
+                
+                <div class="card">
+                    <h3><i class="fas fa-list"></i> Recent Executions</h3>
+                    <div id="executionsContainer">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i> Loading executions...
+                        </div>
+                    </div>
+                    <button class="refresh-btn" onclick="loadExecutions()">
+                        <i class="fas fa-sync-alt"></i>
+                        Refresh Status
+                    </button>
+                </div>
+            </div>
+            
+            <div class="log-container" id="logContainer">
+                <div class="log-header">
+                    <div>
+                        <i class="fas fa-terminal"></i>
+                        <span id="logTitle">Execution Logs</span>
+                    </div>
+                    <div class="controls">
+                        <div class="execution-status" id="executionStatus"></div>
+                        <button class="stop-btn" id="stopBtn" onclick="stopExecution()">
+                            <i class="fas fa-stop"></i> Stop
+                        </button>
+                        <button class="refresh-btn" onclick="hideLog()">
+                            <i class="fas fa-times"></i> Close
+                        </button>
+                    </div>
+                </div>
+                <div class="log-content" id="logContent"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:8091/api';
+        let currentExecutionId = null;
+        let logStreamSource = null;
+        let currentMode = 'reference';
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            createParticles();
+            checkSystemStatus();
+        });
+        
+        // Mode switching
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            // Update button states
+            document.getElementById('referenceModeBtn').classList.toggle('active', mode === 'reference');
+            document.getElementById('interactiveModeBtn').classList.toggle('active', mode === 'interactive');
+            
+            // Show/hide content
+            document.getElementById('referenceContent').classList.toggle('hidden', mode !== 'reference');
+            document.getElementById('interactiveContent').classList.toggle('hidden', mode !== 'interactive');
+            
+            // Load interactive content if switching to interactive mode
+            if (mode === 'interactive') {
+                checkAPIHealth();
+                loadPlaybooks();
+                loadExecutions();
+            }
+        }
+        
+        // Particle animation
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (Math.random() * 3 + 3) + 's';
+                particlesContainer.appendChild(particle);
+            }
+        }
+        
+        // System status check
+        async function checkSystemStatus() {
+            const statusElement = document.getElementById('apiStatus');
+            try {
+                // Check if we're in interactive mode and API is available
+                if (currentMode === 'interactive') {
+                    await checkAPIHealth();
+                } else {
+                    statusElement.innerHTML = `
+                        <i class="fas fa-check-circle" style="color: #4caf50;"></i>
+                        <span>Reference Mode Active</span>
+                    `;
+                    statusElement.style.background = 'rgba(76, 175, 80, 0.2)';
+                    statusElement.style.borderColor = 'rgba(76, 175, 80, 0.3)';
+                }
+            } catch (error) {
+                statusElement.innerHTML = `
+                    <i class="fas fa-info-circle" style="color: #2196F3;"></i>
+                    <span>Reference Mode (API Unavailable)</span>
+                `;
+                statusElement.style.background = 'rgba(33, 150, 243, 0.2)';
+                statusElement.style.borderColor = 'rgba(33, 150, 243, 0.3)';
+            }
+        }
+        
+        // API Health Check (for interactive mode)
+        async function checkAPIHealth() {
+            const statusElement = document.getElementById('apiStatus');
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusElement.innerHTML = `
+                        <i class="fas fa-check-circle" style="color: #4caf50;"></i>
+                        <span>Interactive Mode Active</span>
+                    `;
+                    statusElement.style.background = 'rgba(76, 175, 80, 0.2)';
+                    statusElement.style.borderColor = 'rgba(76, 175, 80, 0.3)';
+                } else {
+                    throw new Error('API not healthy');
+                }
+            } catch (error) {
+                statusElement.innerHTML = `
+                    <i class="fas fa-exclamation-triangle" style="color: #f44336;"></i>
+                    <span>API Disconnected - Switch to Reference Mode</span>
+                `;
+                statusElement.style.background = 'rgba(244, 67, 54, 0.2)';
+                statusElement.style.borderColor = 'rgba(244, 67, 54, 0.3)';
+                console.error('API health check failed:', error);
+            }
+        }
+        
+        // Copy to clipboard functionality
+        function copyToClipboard(text) {
+            // Extract URL or command from the text
+            const command = text.includes(':') && text.includes('http') ? text.split(': ')[1] || text : text;
+            
+            navigator.clipboard.writeText(command).then(() => {
+                showNotification();
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                // Fallback for older browsers
+                const textArea = document.createElement("textarea");
+                textArea.value = command;
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showNotification();
+                } catch (err) {
+                    console.error('Fallback: Oops, unable to copy', err);
+                }
+                document.body.removeChild(textArea);
+            });
+        }
+        
+        function showNotification() {
+            const notification = document.getElementById('notification');
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 2000);
+        }
+        
+        // Load available playbooks (Interactive mode)
+        async function loadPlaybooks() {
+            if (currentMode !== 'interactive') return;
+            
+            const container = document.getElementById('playbooksContainer');
+            
+            try {
+                const response = await fetch(`${API_BASE}/playbooks`);
+                const data = await response.json();
+                
+                if (response.ok && data.playbooks) {
+                    container.innerHTML = `
+                        <ul class="playbook-list">
+                            ${data.playbooks.map(playbook => `
+                                <li class="playbook-item">
+                                    <div class="playbook-name">
+                                        <i class="fas fa-file-code"></i>
+                                        ${playbook.name}
+                                    </div>
+                                    <button class="execute-btn" onclick="executePlaybook('${playbook.name}')">
+                                        <i class="fas fa-play"></i>
+                                        Execute
+                                    </button>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    `;
+                } else {
+                    container.innerHTML = '<div class="error-message">Failed to load playbooks</div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="error-message">API not available - Switch to Reference Mode</div>';
+                console.error('Failed to load playbooks:', error);
+            }
+        }
+        
+        // Load execution history (Interactive mode)
+        async function loadExecutions() {
+            if (currentMode !== 'interactive') return;
+            
+            const container = document.getElementById('executionsContainer');
+            
+            try {
+                const response = await fetch(`${API_BASE}/executions`);
+                const data = await response.json();
+                
+                if (response.ok && data.executions) {
+                    if (data.executions.length === 0) {
+                        container.innerHTML = '<div class="loading" style="opacity: 0.7;">No executions yet</div>';
+                    } else {
+                        container.innerHTML = `
+                            <ul class="playbook-list">
+                                ${data.executions.slice(-5).reverse().map(exec => `
+                                    <li class="playbook-item">
+                                        <div class="playbook-name">
+                                            <i class="fas fa-clock"></i>
+                                            ${exec.playbook}
+                                        </div>
+                                        <div class="controls">
+                                            <div class="execution-status status-${exec.status}">
+                                                ${getStatusIcon(exec.status)} ${exec.status}
+                                            </div>
+                                            <button class="execute-btn" onclick="showExecutionLogs('${exec.execution_id}', '${exec.playbook}')">
+                                                <i class="fas fa-eye"></i>
+                                                View Logs
+                                            </button>
+                                        </div>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        `;
+                    }
+                } else {
+                    container.innerHTML = '<div class="error-message">Failed to load executions</div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="error-message">API not available</div>';
+                console.error('Failed to load executions:', error);
+            }
+        }
+        
+        // Execute a playbook (Interactive mode)
+        async function executePlaybook(playbookName) {
+            try {
+                const response = await fetch(`${API_BASE}/execute`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        playbook: playbookName,
+                        extra_vars: {}
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentExecutionId = data.execution_id;
+                    showExecutionLogs(data.execution_id, playbookName);
+                    startLogStream(data.execution_id);
+                    
+                    // Refresh executions list
+                    setTimeout(loadExecutions, 1000);
+                } else {
+                    alert(`Failed to execute playbook: ${data.error}`);
+                }
+            } catch (error) {
+                alert(`Error executing playbook: ${error.message}`);
+                console.error('Failed to execute playbook:', error);
+            }
+        }
+        
+        // Show execution logs (Interactive mode)
+        function showExecutionLogs(executionId, playbookName) {
+            currentExecutionId = executionId;
+            const logContainer = document.getElementById('logContainer');
+            const logTitle = document.getElementById('logTitle');
+            
+            logTitle.textContent = `Execution Logs: ${playbookName}`;
+            logContainer.style.display = 'block';
+            
+            // Clear existing logs
+            document.getElementById('logContent').innerHTML = '';
+            
+            // Update status
+            updateExecutionStatus(executionId);
+            
+            // Start streaming logs
+            startLogStream(executionId);
+        }
+        
+        // Start log streaming (Interactive mode)
+        function startLogStream(executionId) {
+            // Close existing stream
+            if (logStreamSource) {
+                logStreamSource.close();
+            }
+            
+            // Start new stream
+            logStreamSource = new EventSource(`${API_BASE}/executions/${executionId}/logs/stream`);
+            
+            logStreamSource.onmessage = function(event) {
+                const logEntry = JSON.parse(event.data);
+                addLogLine(logEntry);
+            };
+            
+            logStreamSource.addEventListener('complete', function(event) {
+                const data = JSON.parse(event.data);
+                updateExecutionStatus(executionId);
+                logStreamSource.close();
+                loadExecutions(); // Refresh the executions list
+            });
+            
+            logStreamSource.onerror = function(error) {
+                console.error('Log stream error:', error);
+            };
+        }
+        
+        // Add log line to display (Interactive mode)
+        function addLogLine(logEntry) {
+            const logContent = document.getElementById('logContent');
+            const logLine = document.createElement('div');
+            logLine.className = `log-line ${logEntry.type || ''}`;
+            
+            const timestamp = new Date(logEntry.timestamp).toLocaleTimeString();
+            logLine.textContent = `[${timestamp}] ${logEntry.line}`;
+            
+            logContent.appendChild(logLine);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+        
+        // Update execution status (Interactive mode)
+        async function updateExecutionStatus(executionId) {
+            try {
+                const response = await fetch(`${API_BASE}/executions/${executionId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const statusElement = document.getElementById('executionStatus');
+                    const stopBtn = document.getElementById('stopBtn');
+                    
+                    statusElement.className = `execution-status status-${data.status}`;
+                    statusElement.innerHTML = `${getStatusIcon(data.status)} ${data.status}`;
+                    
+                    if (data.status === 'running') {
+                        stopBtn.style.display = 'block';
+                    } else {
+                        stopBtn.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to update status:', error);
+            }
+        }
+        
+        // Stop execution (Interactive mode)
+        async function stopExecution() {
+            if (!currentExecutionId) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/executions/${currentExecutionId}/stop`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    document.getElementById('stopBtn').style.display = 'none';
+                    loadExecutions();
+                } else {
+                    const data = await response.json();
+                    alert(`Failed to stop execution: ${data.error}`);
+                }
+            } catch (error) {
+                alert(`Error stopping execution: ${error.message}`);
+            }
+        }
+        
+        // Hide log container (Interactive mode)
+        function hideLog() {
+            document.getElementById('logContainer').style.display = 'none';
+            if (logStreamSource) {
+                logStreamSource.close();
+                logStreamSource = null;
+            }
+            currentExecutionId = null;
+        }
+        
+        // Get status icon (Interactive mode)
+        function getStatusIcon(status) {
+            switch (status) {
+                case 'running': return '<i class="fas fa-spinner fa-spin"></i>';
+                case 'completed': return '<i class="fas fa-check-circle"></i>';
+                case 'failed': return '<i class="fas fa-times-circle"></i>';
+                case 'error': return '<i class="fas fa-exclamation-triangle"></i>';
+                case 'stopped': return '<i class="fas fa-stop-circle"></i>';
+                default: return '<i class="fas fa-clock"></i>';
+            }
+        }
+        
+        // Theme toggle
+        function toggleTheme() {
+            // Theme toggle functionality can be implemented here
+            console.log('Theme toggle clicked');
+        }
+        
+        // Auto-refresh executions every 10 seconds (when in interactive mode)
+        setInterval(() => {
+            if (currentMode === 'interactive') {
+                loadExecutions();
+            }
+        }, 10000);
+    </script>
+</body>
+</html>

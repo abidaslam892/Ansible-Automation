@@ -1,0 +1,125 @@
+---
+# WanderList Application Deployment Playbook (No Sudo Version)
+# This playbook deploys and manages the WanderList application without requiring sudo
+
+- name: Deploy WanderList Application
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  vars:
+    app_name: wanderlist
+    app_version: "latest"
+    app_port: 3000
+    
+  tasks:
+    - name: Display deployment information
+      debug:
+        msg: "Starting deployment of {{ app_name }} version {{ app_version }}"
+        
+    - name: Check system information
+      debug:
+        msg: "Deploying on {{ ansible_hostname }} ({{ ansible_os_family }})"
+        
+    - name: Verify Docker availability
+      command: docker --version
+      register: docker_version
+      ignore_errors: yes
+      
+    - name: Display Docker status
+      debug:
+        msg: "Docker status: {{ docker_version.stdout if docker_version.rc == 0 else 'Docker not available' }}"
+        
+    - name: Check for existing WanderList containers
+      command: docker ps -a --filter name=wanderlist --format "table {{.Names}}\t{{.Status}}"
+      register: wanderlist_containers
+      ignore_errors: yes
+      
+    - name: Display existing containers
+      debug:
+        msg: "Existing WanderList containers:\n{{ wanderlist_containers.stdout }}"
+      when: wanderlist_containers.rc == 0
+      
+    - name: Create application directory structure
+      file:
+        path: "/tmp/{{ app_name }}/{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - config
+        - logs
+        - data
+        
+    - name: Generate application configuration
+      copy:
+        content: |
+          # WanderList Application Configuration
+          APP_NAME={{ app_name }}
+          APP_VERSION={{ app_version }}
+          APP_PORT={{ app_port }}
+          DEPLOY_TIME={{ ansible_date_time.iso8601 }}
+          DEPLOY_HOST={{ ansible_hostname }}
+        dest: "/tmp/{{ app_name }}/config/app.env"
+        mode: '0644'
+        
+    - name: Create deployment manifest
+      copy:
+        content: |
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: {{ app_name }}
+            labels:
+              app: {{ app_name }}
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: {{ app_name }}
+            template:
+              metadata:
+                labels:
+                  app: {{ app_name }}
+              spec:
+                containers:
+                - name: {{ app_name }}
+                  image: {{ app_name }}:{{ app_version }}
+                  ports:
+                  - containerPort: {{ app_port }}
+                  env:
+                  - name: NODE_ENV
+                    value: "production"
+        dest: "/tmp/{{ app_name }}/deployment.yaml"
+        mode: '0644'
+        
+    - name: Check Kubernetes connectivity
+      command: kubectl cluster-info
+      register: k8s_info
+      ignore_errors: yes
+      
+    - name: Display Kubernetes status
+      debug:
+        msg: "Kubernetes status: {{ 'Connected' if k8s_info.rc == 0 else 'Not available' }}"
+        
+    - name: Verify deployment files
+      stat:
+        path: "/tmp/{{ app_name }}/{{ item }}"
+      register: deploy_files
+      loop:
+        - config/app.env
+        - deployment.yaml
+        
+    - name: Display deployment summary
+      debug:
+        msg: |
+          ===== WanderList Deployment Summary =====
+          Application: {{ app_name }}
+          Version: {{ app_version }}
+          Deploy Time: {{ ansible_date_time.iso8601 }}
+          Host: {{ ansible_hostname }}
+          Files Created:
+          {% for file in deploy_files.results %}
+          - {{ file.item }}: {{ 'OK' if file.stat.exists else 'FAILED' }}
+          {% endfor %}
+          Docker Available: {{ 'Yes' if docker_version.rc == 0 else 'No' }}
+          Kubernetes Available: {{ 'Yes' if k8s_info.rc == 0 else 'No' }}
+          ==========================================

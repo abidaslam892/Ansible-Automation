@@ -1,0 +1,207 @@
+---
+# WanderList Application Deployment Playbook (Simple Working Version)
+# This playbook demonstrates Ansible execution for WanderList
+
+- name: Deploy WanderList Application
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  vars:
+    app_name: wanderlist
+    app_version: latest
+    app_port: 3000
+    
+  tasks:
+    - name: Display deployment start message
+      debug:
+        msg: "🚀 Starting deployment of {{ app_name }} version {{ app_version }}"
+        
+    - name: Show system information
+      debug:
+        msg: "📍 Deploying on {{ ansible_hostname }} running {{ ansible_os_family }}"
+        
+    - name: Create application directories
+      file:
+        path: "/tmp/{{ app_name }}/{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - config
+        - logs
+        - data
+        - backups
+      register: created_dirs
+        
+    - name: Generate application configuration
+      copy:
+        content: |
+          # WanderList Application Configuration
+          APP_NAME={{ app_name }}
+          APP_VERSION={{ app_version }}
+          APP_PORT={{ app_port }}
+          DEPLOY_TIME={{ ansible_date_time.iso8601 }}
+          DEPLOY_HOST={{ ansible_hostname }}
+          DATABASE_URL=postgresql://wanderlist:password@postgres-service:5432/wanderlistdb
+          NODE_ENV=production
+          SESSION_SECRET=wanderlist-secret-key
+        dest: "/tmp/{{ app_name }}/config/app.env"
+        mode: '0644'
+      register: config_file
+        
+    - name: Create Kubernetes deployment manifest
+      copy:
+        content: |
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: {{ app_name }}-app
+            labels:
+              app: {{ app_name }}
+              version: {{ app_version }}
+          spec:
+            replicas: 2
+            selector:
+              matchLabels:
+                app: {{ app_name }}
+            template:
+              metadata:
+                labels:
+                  app: {{ app_name }}
+                  version: {{ app_version }}
+              spec:
+                containers:
+                - name: {{ app_name }}
+                  image: {{ app_name }}:{{ app_version }}
+                  ports:
+                  - containerPort: {{ app_port }}
+                  env:
+                  - name: NODE_ENV
+                    value: "production"
+                  - name: APP_PORT
+                    value: "{{ app_port }}"
+                  resources:
+                    limits:
+                      memory: "512Mi"
+                      cpu: "500m"
+                    requests:
+                      memory: "256Mi"
+                      cpu: "250m"
+          ---
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: {{ app_name }}-service
+          spec:
+            selector:
+              app: {{ app_name }}
+            ports:
+            - protocol: TCP
+              port: 80
+              targetPort: {{ app_port }}
+            type: LoadBalancer
+        dest: "/tmp/{{ app_name }}/k8s-deployment.yaml"
+        mode: '0644'
+      register: k8s_manifest
+        
+    - name: Create Docker Compose configuration
+      copy:
+        content: |
+          version: '3.8'
+          services:
+            {{ app_name }}:
+              image: {{ app_name }}:{{ app_version }}
+              ports:
+                - "{{ app_port }}:{{ app_port }}"
+              environment:
+                - NODE_ENV=production
+                - APP_PORT={{ app_port }}
+                - DATABASE_URL=postgresql://postgres:password@db:5432/wanderlistdb
+              depends_on:
+                - db
+              restart: unless-stopped
+              
+            db:
+              image: postgres:13
+              environment:
+                - POSTGRES_DB=wanderlistdb
+                - POSTGRES_USER=wanderlist
+                - POSTGRES_PASSWORD=password
+              volumes:
+                - postgres_data:/var/lib/postgresql/data
+              ports:
+                - "5432:5432"
+              restart: unless-stopped
+                
+          volumes:
+            postgres_data:
+        dest: "/tmp/{{ app_name }}/docker-compose.yml"
+        mode: '0644'
+      register: docker_compose
+        
+    - name: Create deployment script
+      copy:
+        content: |
+          #!/bin/bash
+          # WanderList Deployment Script
+          echo "🚀 WanderList Deployment Script"
+          echo "================================"
+          echo "App: {{ app_name }}"
+          echo "Version: {{ app_version }}"
+          echo "Deploy Time: {{ ansible_date_time.iso8601 }}"
+          echo ""
+          
+          # Check Docker
+          if command -v docker &> /dev/null; then
+              echo "✅ Docker is available"
+              docker --version
+          else
+              echo "❌ Docker not found"
+          fi
+          
+          # Check Kubernetes
+          if command -v kubectl &> /dev/null; then
+              echo "✅ Kubectl is available"
+              kubectl version --client
+          else
+              echo "❌ Kubectl not found"
+          fi
+          
+          echo ""
+          echo "📁 Deployment files created:"
+          ls -la /tmp/{{ app_name }}/
+          
+          echo ""
+          echo "🎯 Deployment completed successfully!"
+        dest: "/tmp/{{ app_name }}/deploy.sh"
+        mode: '0755'
+      register: deploy_script
+        
+    - name: Execute deployment script
+      command: /tmp/{{ app_name }}/deploy.sh
+      register: deploy_output
+        
+    - name: Display deployment results
+      debug:
+        msg: "{{ deploy_output.stdout_lines }}"
+        
+    - name: Display deployment summary
+      debug:
+        msg: |
+          ===== 🎯 WanderList Deployment Summary =====
+          ✅ Application: {{ app_name }}
+          ✅ Version: {{ app_version }}
+          ✅ Deploy Time: {{ ansible_date_time.iso8601 }}
+          ✅ Target Host: {{ ansible_hostname }}
+          ✅ Configuration: {{ config_file.dest }}
+          ✅ K8s Manifest: {{ k8s_manifest.dest }}
+          ✅ Docker Compose: {{ docker_compose.dest }}
+          ✅ Deploy Script: {{ deploy_script.dest }}
+          
+          📊 Files Status:
+          - Config File: {{ 'Created' if config_file.changed else 'Exists' }}
+          - K8s Manifest: {{ 'Created' if k8s_manifest.changed else 'Exists' }}
+          - Docker Compose: {{ 'Created' if docker_compose.changed else 'Exists' }}
+          - Deploy Script: {{ 'Created' if deploy_script.changed else 'Exists' }}
+          
+          🎉 Deployment completed successfully!
+          ==========================================

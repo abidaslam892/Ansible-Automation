@@ -1,0 +1,115 @@
+---
+# WanderList Application Deployment Playbook
+# This playbook deploys and manages the WanderList application
+
+- name: Deploy WanderList Application
+  hosts: wanderlist_app
+  become: yes
+  gather_facts: yes
+  vars:
+    app_name: wanderlist
+    app_version: "{{ app_version | default('latest') }}"
+    app_port: 3000
+    db_host: postgres-service
+    db_port: 5432
+    db_name: wanderlistdb
+    
+  tasks:
+    - name: Ensure Docker is installed
+      package:
+        name: docker.io
+        state: present
+      tags: docker
+
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+      tags: docker
+
+    - name: Create application directory
+      file:
+        path: "/opt/{{ app_name }}"
+        state: directory
+        mode: '0755'
+      tags: setup
+
+    - name: Copy application files
+      copy:
+        src: "{{ item }}"
+        dest: "/opt/{{ app_name }}/"
+        mode: '0644'
+      with_fileglob:
+        - "../*.js"
+        - "../package.json"
+        - "../Dockerfile"
+      tags: deploy
+
+    - name: Copy public directory
+      copy:
+        src: "../public/"
+        dest: "/opt/{{ app_name }}/public/"
+        mode: '0644'
+      tags: deploy
+
+    - name: Build Docker image
+      docker_image:
+        name: "{{ app_name }}"
+        tag: "{{ app_version }}"
+        build:
+          path: "/opt/{{ app_name }}"
+        source: build
+      tags: build
+
+    - name: Stop existing container
+      docker_container:
+        name: "{{ app_name }}"
+        state: stopped
+      ignore_errors: yes
+      tags: deploy
+
+    - name: Remove existing container
+      docker_container:
+        name: "{{ app_name }}"
+        state: absent
+      ignore_errors: yes
+      tags: deploy
+
+    - name: Run WanderList container
+      docker_container:
+        name: "{{ app_name }}"
+        image: "{{ app_name }}:{{ app_version }}"
+        state: started
+        restart_policy: always
+        ports:
+          - "{{ app_port }}:3000"
+        env:
+          NODE_ENV: production
+          DB_HOST: "{{ db_host }}"
+          DB_PORT: "{{ db_port }}"
+          DB_NAME: "{{ db_name }}"
+      tags: deploy
+
+    - name: Verify application is running
+      wait_for:
+        host: localhost
+        port: "{{ app_port }}"
+        delay: 10
+        timeout: 60
+      tags: verify
+
+    - name: Check application health
+      uri:
+        url: "http://localhost:{{ app_port }}/health"
+        method: GET
+      register: health_check
+      retries: 3
+      delay: 5
+      tags: verify
+
+    - name: Display deployment result
+      debug:
+        msg: "WanderList application deployed successfully and is healthy"
+      when: health_check.status == 200
+      tags: verify

@@ -1,0 +1,196 @@
+---
+# WanderList Infrastructure Setup Playbook
+# This playbook sets up the complete infrastructure for WanderList
+
+- name: Setup WanderList Infrastructure
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  vars:
+    namespace: default
+    app_replicas: 3
+    
+  tasks:
+    - name: Check if kubectl is available
+      command: kubectl version --client
+      register: kubectl_check
+      changed_when: false
+      tags: k8s
+
+    - name: Verify Kubernetes cluster connectivity
+      k8s_info:
+        api_version: v1
+        kind: Node
+      register: k8s_nodes
+      tags: k8s
+
+    - name: Display cluster nodes
+      debug:
+        msg: "Cluster has {{ k8s_nodes.resources | length }} nodes"
+      tags: k8s
+
+    - name: Apply WanderList ConfigMap
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: wanderlist-config
+            namespace: "{{ namespace }}"
+          data:
+            NODE_ENV: "production"
+            DB_HOST: "postgres-service"
+            DB_PORT: "5432"
+            DB_NAME: "wanderlistdb"
+      tags: config
+
+    - name: Apply WanderList Secret
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: wanderlist-secret
+            namespace: "{{ namespace }}"
+          type: Opaque
+          data:
+            db-username: "{{ 'wanderlist_user' | b64encode }}"
+            db-password: "{{ 'wanderlist_password' | b64encode }}"
+      tags: config
+
+    - name: Deploy PostgreSQL
+      k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: postgres-deployment
+            namespace: "{{ namespace }}"
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: postgres
+            template:
+              metadata:
+                labels:
+                  app: postgres
+              spec:
+                containers:
+                - name: postgres
+                  image: postgres:13
+                  ports:
+                  - containerPort: 5432
+                  env:
+                  - name: POSTGRES_DB
+                    value: wanderlistdb
+                  - name: POSTGRES_USER
+                    valueFrom:
+                      secretKeyRef:
+                        name: wanderlist-secret
+                        key: db-username
+                  - name: POSTGRES_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: wanderlist-secret
+                        key: db-password
+      tags: database
+
+    - name: Create PostgreSQL Service
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: postgres-service
+            namespace: "{{ namespace }}"
+          spec:
+            selector:
+              app: postgres
+            ports:
+            - port: 5432
+              targetPort: 5432
+      tags: database
+
+    - name: Deploy WanderList Application
+      k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: wanderlist-deployment
+            namespace: "{{ namespace }}"
+          spec:
+            replicas: "{{ app_replicas }}"
+            selector:
+              matchLabels:
+                app: wanderlist
+            template:
+              metadata:
+                labels:
+                  app: wanderlist
+              spec:
+                containers:
+                - name: wanderlist
+                  image: wanderlist:latest
+                  ports:
+                  - containerPort: 3000
+                  envFrom:
+                  - configMapRef:
+                      name: wanderlist-config
+                  env:
+                  - name: DB_USER
+                    valueFrom:
+                      secretKeyRef:
+                        name: wanderlist-secret
+                        key: db-username
+                  - name: DB_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: wanderlist-secret
+                        key: db-password
+      tags: app
+
+    - name: Create WanderList Service
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: wanderlist-svc
+            namespace: "{{ namespace }}"
+          spec:
+            selector:
+              app: wanderlist
+            ports:
+            - port: 3000
+              targetPort: 3000
+            type: ClusterIP
+      tags: app
+
+    - name: Wait for deployments to be ready
+      k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: "{{ item }}"
+        namespace: "{{ namespace }}"
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 300
+      loop:
+        - postgres-deployment
+        - wanderlist-deployment
+      tags: verify
+
+    - name: Display deployment status
+      debug:
+        msg: "WanderList infrastructure deployed successfully to Kubernetes"
+      tags: verify

@@ -1,0 +1,35 @@
+---
+# Simple test playbook for Ansible container
+- name: Test Ansible Setup
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  
+  tasks:
+    - name: Display Ansible version
+      debug:
+        msg: "Ansible is working! Version: {{ ansible_version.full }}"
+    
+    - name: Show current user
+      debug:
+        msg: "Current user: {{ ansible_user_id }}"
+    
+    - name: Show working directory
+      debug:
+        msg: "Working directory: {{ ansible_env.PWD }}"
+    
+    - name: Test file creation
+      file:
+        path: /tmp/ansible-test.txt
+        state: touch
+        mode: '0644'
+    
+    - name: Verify file exists
+      stat:
+        path: /tmp/ansible-test.txt
+      register: test_file
+    
+    - name: Display test result
+      debug:
+        msg: "Test file created successfully!"
+      when: test_file.stat.exists

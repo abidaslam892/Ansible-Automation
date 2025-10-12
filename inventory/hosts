@@ -1,0 +1,49 @@
+# WanderList Infrastructure Inventory
+# This file defines the target hosts for WanderList deployment and management
+
+[wanderlist_app]
+# Application servers
+localhost ansible_connection=local
+
+[databases]
+# Database servers
+# db1.wanderlist.local ansible_host=192.168.1.10 ansible_user=admin
+# db2.wanderlist.local ansible_host=192.168.1.11 ansible_user=admin
+
+[monitoring]
+# Monitoring servers
+# monitoring.wanderlist.local ansible_host=192.168.1.20 ansible_user=admin
+
+[kubernetes_masters]
+# Kubernetes master nodes
+# k8s-master.wanderlist.local ansible_host=192.168.1.30 ansible_user=admin
+
+[kubernetes_workers]
+# Kubernetes worker nodes
+# k8s-worker1.wanderlist.local ansible_host=192.168.1.31 ansible_user=admin
+# k8s-worker2.wanderlist.local ansible_host=192.168.1.32 ansible_user=admin
+
+[development]
+localhost ansible_connection=local
+
+[staging]
+# staging.wanderlist.local ansible_host=192.168.2.10 ansible_user=deploy
+
+[production]
+# prod1.wanderlist.local ansible_host=10.0.1.10 ansible_user=deploy
+# prod2.wanderlist.local ansible_host=10.0.1.11 ansible_user=deploy
+
+# Group of groups
+[wanderlist:children]
+wanderlist_app
+databases
+monitoring
+
+[kubernetes:children]
+kubernetes_masters
+kubernetes_workers
+
+[all:vars]
+# Global variables
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+ansible_python_interpreter=/usr/local/bin/python3

@@ -1,0 +1,193 @@
+---
+# WanderList Monitoring Setup Playbook
+# This playbook sets up Prometheus and Grafana monitoring
+
+- name: Setup WanderList Monitoring
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  vars:
+    monitoring_namespace: monitoring
+    
+  tasks:
+    - name: Create monitoring namespace
+      k8s:
+        name: "{{ monitoring_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+      tags: namespace
+
+    - name: Deploy Prometheus ConfigMap
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: prometheus-config
+            namespace: "{{ monitoring_namespace }}"
+          data:
+            prometheus.yml: |
+              global:
+                scrape_interval: 15s
+                evaluation_interval: 15s
+              
+              scrape_configs:
+                - job_name: 'prometheus'
+                  static_configs:
+                    - targets: ['localhost:9090']
+                
+                - job_name: 'wanderlist'
+                  static_configs:
+                    - targets: ['wanderlist-svc.default.svc.cluster.local:3000']
+                  metrics_path: '/metrics'
+                
+                - job_name: 'node-exporter'
+                  static_configs:
+                    - targets: ['node-exporter:9100']
+      tags: config
+
+    - name: Deploy Prometheus
+      k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: prometheus-deployment
+            namespace: "{{ monitoring_namespace }}"
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: prometheus
+            template:
+              metadata:
+                labels:
+                  app: prometheus
+              spec:
+                containers:
+                - name: prometheus
+                  image: prom/prometheus:latest
+                  ports:
+                  - containerPort: 9090
+                  volumeMounts:
+                  - name: config-volume
+                    mountPath: /etc/prometheus
+                volumes:
+                - name: config-volume
+                  configMap:
+                    name: prometheus-config
+      tags: prometheus
+
+    - name: Create Prometheus Service
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: prometheus-service
+            namespace: "{{ monitoring_namespace }}"
+          spec:
+            selector:
+              app: prometheus
+            ports:
+            - port: 9090
+              targetPort: 9090
+      tags: prometheus
+
+    - name: Deploy Grafana
+      k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: grafana-deployment
+            namespace: "{{ monitoring_namespace }}"
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: grafana
+            template:
+              metadata:
+                labels:
+                  app: grafana
+              spec:
+                containers:
+                - name: grafana
+                  image: grafana/grafana:latest
+                  ports:
+                  - containerPort: 3000
+                  env:
+                  - name: GF_SECURITY_ADMIN_PASSWORD
+                    value: "admin123"
+      tags: grafana
+
+    - name: Create Grafana Service
+      k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: grafana-service
+            namespace: "{{ monitoring_namespace }}"
+          spec:
+            selector:
+              app: grafana
+            ports:
+            - port: 3000
+              targetPort: 3000
+      tags: grafana
+
+    - name: Deploy Node Exporter DaemonSet
+      k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: DaemonSet
+          metadata:
+            name: node-exporter
+            namespace: "{{ monitoring_namespace }}"
+          spec:
+            selector:
+              matchLabels:
+                app: node-exporter
+            template:
+              metadata:
+                labels:
+                  app: node-exporter
+              spec:
+                containers:
+                - name: node-exporter
+                  image: prom/node-exporter:latest
+                  ports:
+                  - containerPort: 9100
+                  hostNetwork: true
+                  hostPID: true
+      tags: node-exporter
+
+    - name: Wait for monitoring services to be ready
+      k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: "{{ item }}"
+        namespace: "{{ monitoring_namespace }}"
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 300
+      loop:
+        - prometheus-deployment
+        - grafana-deployment
+      tags: verify
+
+    - name: Display monitoring setup result
+      debug:
+        msg: "Monitoring stack deployed successfully. Grafana admin password: admin123"
+      tags: verify
