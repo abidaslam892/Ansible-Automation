@@ -1,63 +1,82 @@
-# Ansible Docker Container for WanderList Infrastructure Management
-FROM python:3.11-slim
+# Production Ansible Automation Platform
+FROM ubuntu:22.04
 
-LABEL maintainer="WanderList DevOps Team"
-LABEL description="Ansible container for WanderList infrastructure automation"
+LABEL maintainer="Ansible Automation Team"
+LABEL description="Professional Ansible Dashboard for Team Collaboration"
+LABEL version="1.0.0"
 
-# Set environment variables
-ENV ANSIBLE_HOST_KEY_CHECKING=False
-ENV ANSIBLE_RETRY_FILES_ENABLED=False
-ENV ANSIBLE_SSH_PIPELINING=True
+# Environment setup
+ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
+ENV ANSIBLE_HOST_KEY_CHECKING=False
+ENV ANSIBLE_STDOUT_CALLBACK=yaml
+ENV TEAM_ACCESS=enabled
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    openssh-client \
-    sshpass \
-    git \
+    python3 \
+    python3-pip \
+    python3-dev \
     curl \
     wget \
-    vim \
-    nano \
+    git \
+    openssh-client \
+    sshpass \
+    rsync \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Ansible and additional Python packages
-RUN pip install --no-cache-dir \
-    ansible \
-    ansible-core \
+# Install Python dependencies
+RUN pip3 install --no-cache-dir \
+    ansible>=6.0.0 \
+    flask \
+    flask-cors \
+    flask-socketio \
+    requests \
+    pyyaml \
+    jinja2 \
     boto3 \
     kubernetes \
     docker \
     jmespath \
-    netaddr \
-    requests \
-    flask \
-    flask-cors
+    netaddr
 
-# Create ansible user
-RUN useradd -m -s /bin/bash ansible && \
-    mkdir -p /home/ansible/.ssh && \
-    chown -R ansible:ansible /home/ansible
+# Install Ansible collections
+RUN ansible-galaxy collection install \
+    community.general \
+    ansible.posix \
+    community.docker \
+    kubernetes.core
 
 # Create working directories
 WORKDIR /ansible
-RUN mkdir -p /ansible/{playbooks,inventory,roles,group_vars,host_vars,logs}
+RUN mkdir -p /ansible/{playbooks,inventory,group_vars,host_vars,roles,logs} \
+    && mkdir -p /var/log/ansible \
+    && mkdir -p /app/{dashboards,api,scripts}
 
-# Copy Ansible configuration
+# Copy application files
+COPY dashboards/ /app/dashboards/
+COPY api/ /app/api/
+COPY scripts/ /app/scripts/
 COPY ansible.cfg /ansible/
 COPY requirements.yml /ansible/
 
-# Set proper permissions
-RUN chown -R ansible:ansible /ansible
+# Copy startup script
+COPY docker/start-production.sh /start-production.sh
+RUN chmod +x /start-production.sh
 
-# Switch to ansible user
+# Create non-root user
+RUN useradd -r -s /bin/bash -d /ansible ansible \
+    && chown -R ansible:ansible /ansible /app /var/log/ansible
+
+# Switch to non-root user
 USER ansible
 
-# Install Ansible collections and roles
-RUN ansible-galaxy install -r requirements.yml || true
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8093/portal.html || exit 1
 
-# Set default working directory
-WORKDIR /ansible
+# Expose ports
+EXPOSE 8093 8094
 
-# Default command
-CMD ["/bin/bash"]
+# Start command
+CMD ["/start-production.sh"]
