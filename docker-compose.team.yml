@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  ansible-dashboard:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    container_name: ansible-team-dashboard
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:8093:8093"   # Dashboard accessible from any IP
+      - "0.0.0.0:8094:8094"   # API accessible from any IP
+    environment:
+      - ENV=team-access
+      - DASHBOARD_HOST=0.0.0.0
+      - DASHBOARD_PORT=8093
+      - API_HOST=0.0.0.0
+      - API_PORT=8094
+      - TEAM_ACCESS=enabled
+      - CORS_ENABLED=true
+    volumes:
+      # Mount Ansible files
+      - ./playbooks:/ansible/playbooks:ro
+      - ./inventory:/ansible/inventory:ro
+      - ./group_vars:/ansible/group_vars:ro
+      - ./host_vars:/ansible/host_vars:ro
+      - ./roles:/ansible/roles:ro
+      - ./dashboards:/ansible/dashboards:ro
+      - ./api:/ansible/api:ro
+      # Mount Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Mount logs
+      - ansible_team_logs:/var/log/ansible
+    working_dir: /ansible
+    networks:
+      - ansible-team-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8093/portal.html"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  ansible_team_logs:
+    driver: local
+
+networks:
+  ansible-team-network:
+    driver: bridge

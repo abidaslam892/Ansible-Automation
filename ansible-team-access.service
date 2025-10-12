@@ -1,0 +1,17 @@
+[Unit]
+Description=Ansible Team Access Dashboard
+After=network.target docker.service
+Requires=network.target
+
+[Service]
+Type=forking
+User=abid
+Group=abid
+WorkingDirectory=/home/abid/Project/ansible-showcase
+ExecStart=/home/abid/Project/ansible-showcase/scripts/start-team-access.sh
+ExecStop=/usr/bin/pkill -f 'python3.*8093|team_api_server.py'
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

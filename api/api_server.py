@@ -18,7 +18,8 @@ import signal
 import queue
 
 app = Flask(__name__)
-CORS(app)
+# Enable CORS for team access from different devices
+CORS(app, origins="*", allow_headers=["Content-Type", "Authorization"], methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
 # Configuration
 ANSIBLE_DIR = "/ansible"

@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  ansible-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ansible-automation-dashboard
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:8093:8093"   # Dashboard accessible from any IP
+      - "0.0.0.0:8094:8094"   # API accessible from any IP
+    environment:
+      - ENV=production
+      - DASHBOARD_HOST=0.0.0.0
+      - DASHBOARD_PORT=8093
+      - API_HOST=0.0.0.0
+      - API_PORT=8094
+      - TEAM_ACCESS=enabled
+    volumes:
+      - ../playbooks:/ansible/playbooks:ro
+      - ../inventory:/ansible/inventory:ro
+      - ../group_vars:/ansible/group_vars:ro
+      - ../host_vars:/ansible/host_vars:ro
+      - ../roles:/ansible/roles:ro
+      - ansible_logs:/var/log/ansible
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - ansible-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8093/portal.html"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: ansible-nginx-proxy
+    restart: unless-stopped
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - ansible-dashboard
+    networks:
+      - ansible-network
+
+volumes:
+  ansible_logs:
+    driver: local
+
+networks:
+  ansible-network:
+    driver: bridge
